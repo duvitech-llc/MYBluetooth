@@ -15,6 +15,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
 
@@ -89,7 +90,21 @@ public class BTConnectService extends Service {
                         btSocket.connect();
                         outStream = btSocket.getOutputStream();
                         inStream = btSocket.getInputStream();
-                        bConnected = true;
+
+
+                        String resp = ReadStream(inStream);
+
+                        String[] results = resp.split("\r");
+                        for(int z=0; z < results.length; z++) {
+                            if (results[z].compareToIgnoreCase("CONNECTED") == 0) {
+                                bConnected = true;
+                                break;
+                            }
+                        }
+
+                        if(!bConnected)
+                            Log.e(LOG_TAG, "Did not receive the CONNECTED response from dongle");
+
                         Log.d(LOG_TAG, "...Connection established and data link opened...");
                     } catch (IOException e) {
                         try {
@@ -102,45 +117,26 @@ public class BTConnectService extends Service {
 
                     if(bConnected) {
                         sendData("ATZ\r");
+                        String resp = ReadStream(inStream);
+                        do{
 
-                        try {
-                            int bytesAvailable = inStream.available();
-                            if(bytesAvailable > 0 )
-                            {
-                                //we have data
-                                byte[] packetBytes = new byte[bytesAvailable];
-                                int readCount = inStream.read(packetBytes);
-                                for(int i=0;i<bytesAvailable;i++)
-                                {
-                                    byte b = packetBytes[i];
-                                    if(b == delimiter) {
-                                        byte[] encodedBytes = new byte[readBufferPosition];
-                                        System.arraycopy(readBuffer, 0, encodedBytes, 0, encodedBytes.length);
-                                        final String data = new String(encodedBytes, "US-ASCII");
-                                        readBufferPosition = 0;
-                                        Log.d(LOG_TAG,"ODBII Resp: " + data);
-                                    }
-                                    else
-                                    {
-                                        readBuffer[readBufferPosition++] = b;
-                                    }
+                            Log.d(LOG_TAG, "Command Resp: " + resp);
+                            resp = ReadStream(inStream);
+                        }while(!resp.contains("ELM327"));
 
-                                }
+                        sendData("AT SP 00\r");
+                        do{
+                            resp = ReadStream(inStream);
+                            Log.d(LOG_TAG, "Command Resp: " + resp);
+                        }while(!resp.contains("OK"));
 
-                                if(readBufferPosition>0) {
-                                    byte[] encodedBytes = new byte[readBufferPosition];
 
-                                    System.arraycopy(readBuffer, 0, encodedBytes, 0, encodedBytes.length);
-                                    final String data = new String(encodedBytes, "US-ASCII");
-                                    readBufferPosition = 0;
-                                    Log.d(LOG_TAG, "ODBII Resp: " + data);
-                                }
-                            }
-                        }
-                        catch(IOException ex)
-                        {
-                            Log.d("FATAL ERROR", ex.getMessage());
-                        }
+                        sendData("0105\r");
+                        do{
+                            resp = ReadStream(inStream);
+                            Log.d(LOG_TAG, "Command Resp: " + resp);
+                        }while(!resp.contains("41 05"));
+
                     }
                 }
             }
@@ -195,10 +191,47 @@ public class BTConnectService extends Service {
     };
 
 
+    private static String ReadStream(InputStream s){
+        String response = "No Data";
+        byte[] sBuffer = new byte[1024];
+        Arrays.fill(sBuffer, (byte) 0);
+
+        // start input stream listener
+        try{
+            Thread.sleep(100);
+            int availableBytes = s.available();
+            while(availableBytes>0) {
+                byte[] test = new byte[availableBytes];
+                int c = s.read(test,0,availableBytes);
+                if(c != availableBytes)
+                    Log.d(LOG_TAG, "read vs available byte mismatch");
+
+                byte[] encodedBytes = new byte[c];
+                System.arraycopy(test, 0, encodedBytes, 0, encodedBytes.length);
+                final String data = new String(encodedBytes, "US-ASCII");
+                Log.d(LOG_TAG, "Connect: " + data);
+
+                Arrays.fill(sBuffer, (byte) 0);
+                availableBytes = s.available();
+                if(availableBytes == 0)
+                    return data;
+                else
+                    Log.e(LOG_TAG,"we have data and more in the inputstream");
+            }
+
+        }catch (IOException ioe){
+            Log.w(LOG_TAG,ioe.getMessage());
+        } catch (InterruptedException e) {
+            Log.w(LOG_TAG,e.getMessage());
+        }
+
+        return response;
+    }
+
     private void sendData(String message) {
         byte[] msgBuffer = message.getBytes();
 
-        Log.d(LOG_TAG, "...Sending data: " + message + "...");
+        Log.d(LOG_TAG, "Sending CMD: " + message);
 
         try {
             outStream.write(msgBuffer);
@@ -285,5 +318,10 @@ public class BTConnectService extends Service {
         if(mDiscoverReceiverEnabled)
             unregisterReceiver(mDiscoveredDeviceReceiver);
         Log.i(LOG_TAG, "BT Service Stopped");
+    }
+
+    public String getBTDongleAddress()
+    {
+        return bt_address;
     }
 }

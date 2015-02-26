@@ -10,6 +10,9 @@ import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -28,6 +31,8 @@ public class MainActivity extends ActionBarActivity {
 
             mBTService = binder.getService();
             mBound = true;
+
+
         }
 
         @Override
@@ -71,8 +76,20 @@ public class MainActivity extends ActionBarActivity {
                 // bind service here
                 bindService(i, mConnection, Context.BIND_AUTO_CREATE);
 
+
             }
         }
+
+        Button btnGetAddress = (Button)findViewById(R.id.btnGetAddr);
+        btnGetAddress.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(mBound) {
+                    TextView t = (TextView) findViewById(R.id.tvBTDongleAddr);
+                    t.setText(mBTService.getBTDongleAddress());
+                }
+            }
+        });
 
     }
 

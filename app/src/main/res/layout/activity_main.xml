@@ -5,4 +5,22 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".MainActivity">
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="00:00:00:00:00:00"
+        android:id="@+id/tvBTDongleAddr"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:singleLine="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Get Address"
+        android:id="@+id/btnGetAddr"
+        android:layout_below="@+id/tvBTDongleAddr"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="120dp" />
 </RelativeLayout>
