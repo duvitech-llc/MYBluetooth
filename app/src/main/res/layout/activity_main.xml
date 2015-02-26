@@ -23,4 +23,22 @@
         android:layout_below="@+id/tvBTDongleAddr"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="120dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="Medium Text"
+        android:id="@+id/textView"
+        android:layout_below="@+id/tvBTDongleAddr"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="48dp" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Read Temp"
+        android:id="@+id/btnGetTemp"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true" />
 </RelativeLayout>

@@ -91,6 +91,18 @@ public class MainActivity extends ActionBarActivity {
             }
         });
 
+        Button btnGetTemperature = (Button)findViewById(R.id.btnGetTemp);
+        btnGetTemperature.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(mBound){
+
+                    TextView t = (TextView) findViewById(R.id.textView);
+                    t.setText(mBTService.sendReceive("0105\r","41 05"));
+                }
+            }
+        });
+
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {

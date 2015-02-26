@@ -225,13 +225,16 @@ public class BTConnectService extends Service {
 
         return response;
     }
+    private String sendData(String message, String expected){
+        return sendData(message, expected, false);
 
-    private String sendData(String message, String expected) {
+    }
 
-        Log.d(LOG_TAG, "Sending CMD: " + message);
+    private String sendData(String message, String expected, boolean bTrim) {
 
         try {
             if(!message.isEmpty()) {
+                Log.d(LOG_TAG, "Sending CMD: " + message);
                 byte[] msgBuffer = message.getBytes();
                 outStream.write(msgBuffer);
                 outStream.flush();
@@ -247,25 +250,33 @@ public class BTConnectService extends Service {
 
                 if (ch == 0x3E) {
                     // check if buffer has response
-                    byte[] tB = new byte[sBuffer.size()];
-                    for(int x = 0; x < tB.length; x++)
-                        tB[x] = (byte)sBuffer.get(x);
-                    String temp = new String(tB, "US-ASCII");
+                    String temp = "";
+                    for(int x=0; x< sBuffer.size(); x++)
+                        temp += ((char) sBuffer.get(x));
+
                     if(expected.isEmpty())
                         return temp;
                     if(temp.contains(expected)) {
-                        return temp;
+                        if(bTrim)
+                        {
+                            String[] ts = temp.split("\r");
+                            for(int z=0; z<ts.length; z++)
+                                if(ts[z].contains(expected))
+                                    return ts[z];
+                        }
+                        else
+                            return temp;
                     }
                     else {
 
-                        sBuffer.add((byte)ch);
+                        sBuffer.add((char)ch);
                         ch = -1;
                     }
 
 
                 }
                 else{
-                    sBuffer.add((byte)ch);
+                    sBuffer.add((char)ch);
                 }
 
             }while(ch != 0x3E);
@@ -358,5 +369,10 @@ public class BTConnectService extends Service {
     public String getBTDongleAddress()
     {
         return bt_address;
+    }
+
+    public String sendReceive(String cmd, String exp)
+    {
+        return sendData(cmd,exp,true);
     }
 }
