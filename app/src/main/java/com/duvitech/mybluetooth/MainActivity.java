@@ -1,7 +1,11 @@
 package com.duvitech.mybluetooth;
 
 import android.bluetooth.BluetoothAdapter;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -11,8 +15,35 @@ import android.widget.Toast;
 
 public class MainActivity extends ActionBarActivity {
 
+    BTConnectService mBTService;
+    boolean mBound = false;
+
     private static final int REQUEST_ENABLE_BT = 1;
     boolean bCheckForDongleOrTag = false;
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            BTConnectService.BTConnectBinder binder = (BTConnectService.BTConnectBinder) service;
+
+            mBTService = binder.getService();
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mBound =false;
+        }
+    };
+
+    @Override
+    protected void onStop(){
+        super.onStop();
+        if(mBound){
+            unbindService(mConnection);
+            mBound = false;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,7 +66,11 @@ public class MainActivity extends ActionBarActivity {
             }
             else {
                 // start bluetooth service
-                startService(new Intent(getBaseContext(), BTConnectService.class));
+                Intent i = new Intent(getBaseContext(), BTConnectService.class);
+                startService(i);
+                // bind service here
+                bindService(i, mConnection, Context.BIND_AUTO_CREATE);
+
             }
         }
 
@@ -79,6 +114,10 @@ public class MainActivity extends ActionBarActivity {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if(mBound){
+            unbindService(mConnection);
+            mBound = false;
+        }
         stopService(new Intent(getBaseContext(), BTConnectService.class));
     }
 

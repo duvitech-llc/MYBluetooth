@@ -8,9 +8,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,14 +19,24 @@ import java.util.Set;
 import java.util.UUID;
 
 public class BTConnectService extends Service {
+
+    // class used for the client binder
+    public class BTConnectBinder extends Binder {
+        BTConnectService getService(){
+            //return this instance of Myservice to clients so that they can call public methods
+            return BTConnectService.this;
+        }
+    }
+
     private static final String LOG_TAG = "BTConnectService";
-    private static final int REQUEST_ENABLE_BT = 1;
     private BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     private Set<BluetoothDevice> pairedDevices = null;
     private static boolean bConnected = false;
     private BluetoothSocket btSocket = null;
     private OutputStream outStream = null;
     private InputStream inStream = null;
+
+    private final IBinder mBinder = new BTConnectBinder();
 
     final byte delimiter = 13; //This is the ASCII code for a newline character
 
@@ -99,7 +109,7 @@ public class BTConnectService extends Service {
                             {
                                 //we have data
                                 byte[] packetBytes = new byte[bytesAvailable];
-                                inStream.read(packetBytes);
+                                int readCount = inStream.read(packetBytes);
                                 for(int i=0;i<bytesAvailable;i++)
                                 {
                                     byte b = packetBytes[i];
@@ -215,8 +225,7 @@ public class BTConnectService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
-        throw new UnsupportedOperationException("Not yet implemented");
+        return mBinder;
     }
 
     @Override
