@@ -15,6 +15,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
@@ -87,23 +88,14 @@ public class BTConnectService extends Service {
                     Log.d(LOG_TAG, "My Address: " + my_address);
                     Log.d(LOG_TAG, "...Connecting to Remote...");
                     try {
-                        btSocket.connect();
                         outStream = btSocket.getOutputStream();
                         inStream = btSocket.getInputStream();
 
+                        btSocket.connect();
+                        String resp = "";
+                        resp = sendData("", "");
+                        bConnected = true;
 
-                        String resp = ReadStream(inStream);
-
-                        String[] results = resp.split("\r");
-                        for(int z=0; z < results.length; z++) {
-                            if (results[z].compareToIgnoreCase("CONNECTED") == 0) {
-                                bConnected = true;
-                                break;
-                            }
-                        }
-
-                        if(!bConnected)
-                            Log.e(LOG_TAG, "Did not receive the CONNECTED response from dongle");
 
                         Log.d(LOG_TAG, "...Connection established and data link opened...");
                     } catch (IOException e) {
@@ -116,26 +108,40 @@ public class BTConnectService extends Service {
                     }
 
                     if(bConnected) {
-                        sendData("ATZ\r");
-                        String resp = ReadStream(inStream);
-                        do{
+                        String resp = "";
 
-                            Log.d(LOG_TAG, "Command Resp: " + resp);
-                            resp = ReadStream(inStream);
-                        }while(!resp.contains("ELM327"));
+                        resp = sendData("AT Z\r", "ELM327");
+                        if(resp.contains("ELM327"))
+                            Log.d(LOG_TAG, "Reset Device");
+                        else
+                            Log.d(LOG_TAG, "Resp: " + resp);
 
-                        sendData("AT SP 00\r");
-                        do{
-                            resp = ReadStream(inStream);
-                            Log.d(LOG_TAG, "Command Resp: " + resp);
-                        }while(!resp.contains("OK"));
+                        resp = sendData("AT E0\r", "OK");
+                        if(resp.contains("OK"))
+                            Log.d(LOG_TAG, "Turned Echo Off");
+                        else
+                            Log.d(LOG_TAG, "Resp: " + resp);
+
+                        resp = sendData("AT SP 00\r", "OK");
+                        if(resp.contains("OK"))
+                            Log.d(LOG_TAG, "Set to Auto");
+                        else
+                            Log.d(LOG_TAG, "Resp: " + resp);
 
 
-                        sendData("0105\r");
-                        do{
-                            resp = ReadStream(inStream);
-                            Log.d(LOG_TAG, "Command Resp: " + resp);
-                        }while(!resp.contains("41 05"));
+                        resp = sendData("0105\r", "41");
+                        if(resp.contains("41 05")) {
+                            String[] temp = resp.split("\r");
+                            for(int x=0; x< temp.length; x++) {
+                                if (temp[x].contains("41")) {
+                                    Log.d(LOG_TAG, temp[x]);
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                            Log.d(LOG_TAG, "Resp: " + resp);
+
 
                     }
                 }
@@ -195,29 +201,21 @@ public class BTConnectService extends Service {
         String response = "No Data";
         byte[] sBuffer = new byte[1024];
         Arrays.fill(sBuffer, (byte) 0);
+        int pos = 0;
 
         // start input stream listener
         try{
-            Thread.sleep(100);
-            int availableBytes = s.available();
-            while(availableBytes>0) {
-                byte[] test = new byte[availableBytes];
-                int c = s.read(test,0,availableBytes);
-                if(c != availableBytes)
-                    Log.d(LOG_TAG, "read vs available byte mismatch");
+            Thread.sleep(250);
+            int ch = 0x3E;
+            do{
+                ch = s.read();
+                sBuffer[pos] = (byte)ch;
+                pos++;
+            }while(ch != 0x3E);
 
-                byte[] encodedBytes = new byte[c];
-                System.arraycopy(test, 0, encodedBytes, 0, encodedBytes.length);
-                final String data = new String(encodedBytes, "US-ASCII");
-                Log.d(LOG_TAG, "Connect: " + data);
 
-                Arrays.fill(sBuffer, (byte) 0);
-                availableBytes = s.available();
-                if(availableBytes == 0)
-                    return data;
-                else
-                    Log.e(LOG_TAG,"we have data and more in the inputstream");
-            }
+            final String data = new String(sBuffer, "US-ASCII");
+            return data;
 
         }catch (IOException ioe){
             Log.w(LOG_TAG,ioe.getMessage());
@@ -228,16 +226,51 @@ public class BTConnectService extends Service {
         return response;
     }
 
-    private void sendData(String message) {
-        byte[] msgBuffer = message.getBytes();
+    private String sendData(String message, String expected) {
 
         Log.d(LOG_TAG, "Sending CMD: " + message);
 
         try {
-            outStream.write(msgBuffer);
-            outStream.flush();
+            if(!message.isEmpty()) {
+                byte[] msgBuffer = message.getBytes();
+                outStream.write(msgBuffer);
+                outStream.flush();
 
-            Thread.sleep(100);
+                Thread.sleep(250);
+            }
+
+            ArrayList sBuffer = new ArrayList();
+
+            int ch;
+            do {
+                ch = inStream.read();
+
+                if (ch == 0x3E) {
+                    // check if buffer has response
+                    byte[] tB = new byte[sBuffer.size()];
+                    for(int x = 0; x < tB.length; x++)
+                        tB[x] = (byte)sBuffer.get(x);
+                    String temp = new String(tB, "US-ASCII");
+                    if(expected.isEmpty())
+                        return temp;
+                    if(temp.contains(expected)) {
+                        return temp;
+                    }
+                    else {
+
+                        sBuffer.add((byte)ch);
+                        ch = -1;
+                    }
+
+
+                }
+                else{
+                    sBuffer.add((byte)ch);
+                }
+
+            }while(ch != 0x3E);
+
+
         } catch (IOException e) {
             String msg = "In onResume() and an exception occurred during write: " + e.getMessage();
             if (bt_address.equals("00:00:00:00:00:00"))
@@ -249,6 +282,8 @@ public class BTConnectService extends Service {
         {
             Log.d(LOG_TAG, iex.getMessage());
         }
+
+        return "";
     }
 
     public BTConnectService() {
