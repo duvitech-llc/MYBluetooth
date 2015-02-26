@@ -39,7 +39,7 @@ public class BTConnectService extends Service {
             UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     private static String bt_address = "00:00:00:00:00:00";
-
+    private static String my_address = "00:00:00:00:00:00";
 
     private static boolean mDiscoverReceiverEnabled = false;
     private final BroadcastReceiver mDiscoveredDeviceReceiver = new BroadcastReceiver() {
@@ -55,6 +55,7 @@ public class BTConnectService extends Service {
 
                 if(device.getName().compareTo("OBDII") == 0 )
                 {
+                    mBluetoothAdapter.cancelDiscovery();
                     Log.i(LOG_TAG,"Found ODBII Device!!!");
                     // save address
                     bt_address = device.getAddress();
@@ -70,10 +71,9 @@ public class BTConnectService extends Service {
                         Log.e("Fatal Error", "In onResume() and socket create failed: " + e.getMessage() + ".");
                     }
 
-                    mBluetoothAdapter.cancelDiscovery();
                     unregisterReceiver(mDiscoveredDeviceReceiver);
                     mDiscoverReceiverEnabled = false;
-
+                    Log.d(LOG_TAG, "My Address: " + my_address);
                     Log.d(LOG_TAG, "...Connecting to Remote...");
                     try {
                         btSocket.connect();
@@ -192,6 +192,9 @@ public class BTConnectService extends Service {
 
         try {
             outStream.write(msgBuffer);
+            outStream.flush();
+
+            Thread.sleep(100);
         } catch (IOException e) {
             String msg = "In onResume() and an exception occurred during write: " + e.getMessage();
             if (bt_address.equals("00:00:00:00:00:00"))
@@ -199,6 +202,9 @@ public class BTConnectService extends Service {
             msg = msg +  ".\n\nCheck that the SPP UUID: " + MY_UUID.toString() + " exists on server.\n\n";
 
             Log.e("Fatal Error", msg);
+        }catch (InterruptedException iex)
+        {
+            Log.d(LOG_TAG, iex.getMessage());
         }
     }
 
@@ -231,6 +237,8 @@ public class BTConnectService extends Service {
 
         if(mBluetoothAdapter != null)
         {
+            my_address = mBluetoothAdapter.getAddress();
+
             // setup broadcast receiver
             IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
             registerReceiver(mReceiver, filter);
