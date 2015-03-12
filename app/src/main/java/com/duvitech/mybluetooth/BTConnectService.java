@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Binder;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.util.Log;
 
 import java.io.DataOutputStream;
@@ -18,10 +19,18 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Set;
 import java.util.UUID;
 
 public class BTConnectService extends Service {
+
+    private DongleListener _listener = null;
 
     // class used for the client binder
     public class BTConnectBinder extends Binder {
@@ -72,6 +81,8 @@ public class BTConnectService extends Service {
                     Log.i(LOG_TAG,"Found ODBII Device!!!");
                     // save address
                     bt_address = device.getAddress();
+                    if(_listener != null)
+                        _listener.foundDongle(bt_address);
 
                     BluetoothDevice btd = mBluetoothAdapter.getRemoteDevice(bt_address);
 
@@ -397,6 +408,13 @@ public class BTConnectService extends Service {
         return false;
     }
 
+    public void addListener(DongleListener d){
+        _listener = d;
+    }
+
+    public void clearListener(){
+        _listener = null;
+    }
 
     public void flushStream(){
         try {

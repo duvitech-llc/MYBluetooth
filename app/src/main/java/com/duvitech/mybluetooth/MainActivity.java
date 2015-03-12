@@ -16,13 +16,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends ActionBarActivity implements DongleListener {
 
     BTConnectService mBTService;
     boolean mBound = false;
 
     private static final int REQUEST_ENABLE_BT = 1;
     boolean bCheckForDongleOrTag = false;
+    MainActivity myInstance = null;
 
     private ServiceConnection mConnection = new ServiceConnection() {
         @Override
@@ -33,6 +34,7 @@ public class MainActivity extends ActionBarActivity {
             mBound = true;
 
 
+            mBTService.addListener(myInstance);
         }
 
         @Override
@@ -55,6 +57,7 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
+        myInstance = this;
         if (btAdapter == null) {
             // Device does not support Bluetooth
             bCheckForDongleOrTag = false;
@@ -136,6 +139,7 @@ public class MainActivity extends ActionBarActivity {
                 startService(i);
 
                 bindService(i, mConnection, Context.BIND_AUTO_CREATE);
+
             }
             if (resultCode == RESULT_CANCELED) {
                 //Write your code if there's no result
@@ -176,4 +180,14 @@ public class MainActivity extends ActionBarActivity {
         stopService(new Intent(getBaseContext(), BTConnectService.class));
     }
 
+    @Override
+    public void foundDongle(String address) {
+        TextView t = (TextView) findViewById(R.id.tvBTDongleAddr);
+        t.setText(address);
+    }
+
+    @Override
+    public void updateData(VehicleData data) {
+
+    }
 }
