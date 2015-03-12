@@ -41,4 +41,21 @@
         android:id="@+id/btnGetTemp"
         android:layout_centerVertical="true"
         android:layout_centerHorizontal="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Fuel Level"
+        android:id="@+id/btnFuelLevel"
+        android:layout_below="@+id/btnGetTemp"
+        android:layout_alignStart="@+id/btnSendInit"
+        android:layout_marginTop="67dp" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Init"
+        android:id="@+id/btnSendInit"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true" />
 </RelativeLayout>

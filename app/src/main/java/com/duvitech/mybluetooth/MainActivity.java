@@ -103,13 +103,39 @@ public class MainActivity extends ActionBarActivity {
             }
         });
 
+        Button btnSendInit = (Button)findViewById(R.id.btnSendInit);
+        btnSendInit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(mBound){
+
+                    TextView t = (TextView) findViewById(R.id.textView);
+                    t.setText(mBTService.sendReceive("AT Z\r","ELM327"));
+                }
+            }
+        });
+
+        Button btnFuelLevel = (Button)findViewById(R.id.btnFuelLevel);
+        btnFuelLevel.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                if(mBound){
+                    TextView t = (TextView) findViewById(R.id.textView);
+                    t.setText(mBTService.sendReceive("012F\r","41 2F"));
+                }
+            }
+        });
+
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
         if (requestCode == 1) {
             if(resultCode == RESULT_OK){
-                startService(new Intent(getBaseContext(), BTConnectService.class));
+                Intent i = new Intent(getBaseContext(), BTConnectService.class);
+                startService(i);
+
+                bindService(i, mConnection, Context.BIND_AUTO_CREATE);
             }
             if (resultCode == RESULT_CANCELED) {
                 //Write your code if there's no result

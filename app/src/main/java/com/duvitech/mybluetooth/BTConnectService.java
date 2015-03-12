@@ -12,6 +12,7 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -35,7 +36,7 @@ public class BTConnectService extends Service {
     private Set<BluetoothDevice> pairedDevices = null;
     private static boolean bConnected = false;
     private BluetoothSocket btSocket = null;
-    private OutputStream outStream = null;
+    private DataOutputStream  outStream = null;
     private InputStream inStream = null;
 
     private final IBinder mBinder = new BTConnectBinder();
@@ -78,6 +79,7 @@ public class BTConnectService extends Service {
                     // connect and remove this receiver
                     try {
                         btSocket = btd.createInsecureRfcommSocketToServiceRecord(MY_UUID);
+                        //btSocket = btd.createRfcommSocketToServiceRecord(MY_UUID);
 
                     } catch (IOException e) {
                         Log.e("Fatal Error", "In onResume() and socket create failed: " + e.getMessage() + ".");
@@ -88,12 +90,12 @@ public class BTConnectService extends Service {
                     Log.d(LOG_TAG, "My Address: " + my_address);
                     Log.d(LOG_TAG, "...Connecting to Remote...");
                     try {
-                        outStream = btSocket.getOutputStream();
+                        outStream = new DataOutputStream(btSocket.getOutputStream());
                         inStream = btSocket.getInputStream();
 
                         btSocket.connect();
                         String resp = "";
-                        resp = sendData("", "");
+                        //resp = sendData("", "");
                         bConnected = true;
 
 
@@ -108,27 +110,9 @@ public class BTConnectService extends Service {
                     }
 
                     if(bConnected) {
-                        String resp = "";
 
-                        resp = sendData("AT Z\r", "ELM327");
-                        if(resp.contains("ELM327"))
-                            Log.d(LOG_TAG, "Reset Device");
-                        else
-                            Log.d(LOG_TAG, "Resp: " + resp);
-
-                        resp = sendData("AT E0\r", "OK");
-                        if(resp.contains("OK"))
-                            Log.d(LOG_TAG, "Turned Echo Off");
-                        else
-                            Log.d(LOG_TAG, "Resp: " + resp);
-
-                        resp = sendData("AT SP 00\r", "OK");
-                        if(resp.contains("OK"))
-                            Log.d(LOG_TAG, "Set to Auto");
-                        else
-                            Log.d(LOG_TAG, "Resp: " + resp);
-
-
+                        initDongle();
+/*
                         resp = sendData("0105\r", "41");
                         if(resp.contains("41 05")) {
                             String[] temp = resp.split("\r");
@@ -142,13 +126,28 @@ public class BTConnectService extends Service {
                         else
                             Log.d(LOG_TAG, "Resp: " + resp);
 
-
+*/
                     }
                 }
             }
         }
     };
 
+    private void initDongle(){
+        try{
+            String resp = "";
+
+            resp = sendData("AT Z\r", "ELM327");
+            if(resp.contains("ELM327"))
+                Log.d(LOG_TAG, "Reset Device");
+            else
+                Log.d(LOG_TAG, "Resp: " + resp);
+
+        }catch (Exception ex){
+            Log.e(LOG_TAG, ex.getMessage());
+        }
+
+    }
 
     private static boolean mReceiverEnabled = false;
     private BroadcastReceiver mReceiver  = new BroadcastReceiver() {
@@ -254,6 +253,8 @@ public class BTConnectService extends Service {
                     for(int x=0; x< sBuffer.size(); x++)
                         temp += ((char) sBuffer.get(x));
 
+                    Log.i(LOG_TAG,"DATA: " + temp);
+
                     if(expected.isEmpty())
                         return temp;
                     if(temp.contains(expected)) {
@@ -342,14 +343,6 @@ public class BTConnectService extends Service {
 
         if(bConnected)
         {
-            if (outStream != null) {
-                try {
-                    outStream.flush();
-                } catch (IOException e) {
-                    Log.e("Fatal Error", "In onPause() and failed to flush output stream: " + e.getMessage() + ".");
-                }
-            }
-
             if(btSocket != null) {
                 try {
                     btSocket.close();
@@ -374,5 +367,42 @@ public class BTConnectService extends Service {
     public String sendReceive(String cmd, String exp)
     {
         return sendData(cmd,exp,true);
+    }
+
+    public boolean connectDongle(){
+        if(bt_address.compareTo("00:00:00:00:00:00") == 0)
+        {
+            //do discovery
+        }
+        else
+        {
+            try {
+                if (btSocket.isConnected())
+                    btSocket.close();
+
+
+                BluetoothDevice btd = mBluetoothAdapter.getRemoteDevice(bt_address);
+                btSocket = btd.createInsecureRfcommSocketToServiceRecord(MY_UUID);
+                btSocket.connect();
+                outStream = new DataOutputStream(btSocket.getOutputStream());
+                inStream = btSocket.getInputStream();
+                initDongle();
+
+            }catch (IOException ioe){
+                Log.e(LOG_TAG,ioe.getMessage());
+            }
+
+        }
+
+        return false;
+    }
+
+
+    public void flushStream(){
+        try {
+            outStream.flush();
+        }catch (IOException ioe){
+            Log.e(LOG_TAG,ioe.getMessage());
+        }
     }
 }
